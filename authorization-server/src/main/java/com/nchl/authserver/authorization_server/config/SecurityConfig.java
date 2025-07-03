@@ -1,19 +1,20 @@
 package com.nchl.authserver.authorization_server.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 
 @Configuration
-public class securityConfig {
+@Slf4j
+public class SecurityConfig {
 
     @Bean
     @Order(1)
@@ -27,7 +28,7 @@ public class securityConfig {
                 .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
                 .with(authorizationServerConfigurer, (authorizationServer) ->
                         authorizationServer
-                                .oidc(Customizer.withDefaults())	// Enable OpenID Connect 1.0
+                                .oidc(Customizer.withDefaults())    // Enable OpenID Connect 1.0
                 )
                 .authorizeHttpRequests((authorize) ->
                         authorize
@@ -45,7 +46,6 @@ public class securityConfig {
         return http.build();
     }
 
-
     @Bean
     @Order(2)
 // Handles all non-OAuth2 requests:
@@ -54,7 +54,10 @@ public class securityConfig {
 // - Application-specific APIs
 // - Static resources (CSS, JS, images, etc.)
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http)
+
             throws Exception {
+        log.info("Default Security Filter Chain initialized");
+
         http
                 .authorizeHttpRequests((authorize) -> authorize
                         .anyRequest().authenticated()
@@ -62,8 +65,6 @@ public class securityConfig {
                 // Form login handles the redirect to the login page from the
                 // authorization server filter chain
                 .formLogin(Customizer.withDefaults());
-
         return http.build();
     }
-
 }

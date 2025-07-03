@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
@@ -35,7 +36,7 @@ public class AppConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         var user = User.withUsername("nchl")
-                .password("nchl")
+                .password("password")
                 .roles("USER", "ADMIN")
                 .build();
         return new InMemoryUserDetailsManager(user);
@@ -43,7 +44,7 @@ public class AppConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return NoOpPasswordEncoder.getInstance();
     }
 
     @Bean
