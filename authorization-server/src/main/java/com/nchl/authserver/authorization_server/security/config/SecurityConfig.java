@@ -1,6 +1,8 @@
-package com.nchl.authserver.authorization_server.config;
+package com.nchl.authserver.authorization_server.security.config;
 
+import com.nchl.authserver.authorization_server.security.filter.OAuthTokenCachingFilter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -10,34 +12,31 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 
 @Configuration
 @Slf4j
 public class SecurityConfig {
-
+    @Autowired
+    private OAuthTokenCachingFilter oAuthTokenCachingFilter;
     @Bean
     @Order(1)
 //    for OAuth2 endpoints
-    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http)
-            throws Exception {
+    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
                 OAuth2AuthorizationServerConfigurer.authorizationServer();
 
         http
-                .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-                .with(authorizationServerConfigurer, (authorizationServer) ->
-                        authorizationServer
-                                .oidc(Customizer.withDefaults())    // Enable OpenID Connect 1.0
-                )
-                .authorizeHttpRequests((authorize) ->
-                        authorize
-                                .anyRequest().authenticated()
-                )
-                // Redirect to the login page when not authenticated from the
-                // authorization endpoint
-                .exceptionHandling((exceptions) -> exceptions
-                        .defaultAuthenticationEntryPointFor(
+                .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher()) // ✅ critical
+                .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
+                //ignore eventhoufh csrf token is not send in request
+                .csrf(csrf -> csrf.ignoringRequestMatchers(authorizationServerConfigurer.getEndpointsMatcher())) // ✅ avoid 403 on POST
+                .addFilterAfter(oAuthTokenCachingFilter, UsernamePasswordAuthenticationFilter.class)
+
+                .with(authorizationServerConfigurer, configurer -> configurer.oidc(Customizer.withDefaults())) // ✅ attach configurer
+                .exceptionHandling(exceptions ->
+                        exceptions.defaultAuthenticationEntryPointFor(
                                 new LoginUrlAuthenticationEntryPoint("/login"),
                                 new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
                         )

@@ -1,15 +1,15 @@
-package com.nchl.authserver.authorization_server.config;
+package com.nchl.authserver.authorization_server.security.config;
 
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -31,6 +31,7 @@ import java.time.Duration;
 import java.util.UUID;
 
 @Configuration
+@Slf4j
 public class AppConfig {
 
     @Bean
@@ -48,7 +49,9 @@ public class AppConfig {
     }
 
     @Bean
+//  registers a frontend/client app with your Authorization Server
     public RegisteredClientRepository registeredClientRepository() {
+        log.info("Creating registered Client Repository");
         RegisteredClient registeredClient = RegisteredClient.withId(String.valueOf(UUID.randomUUID()))
                 .clientId("client")
                 .clientSecret("secret")
@@ -56,6 +59,7 @@ public class AppConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                //send the code to this uri
                 .redirectUri("http://localhost:8081")
                 /*  OIDC is an authentication layer on top of OAuth 2.0.
                           You add the scope openid in the OAuth2 request.
