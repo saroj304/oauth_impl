@@ -7,14 +7,14 @@
       <option name="url" value="http://download.oracle.com/maven" />
     </remote-repository>
     <remote-repository>
-      <option name="id" value="central" />
-      <option name="name" value="Central Repository" />
-      <option name="url" value="https://repo.maven.apache.org/maven2" />
-    </remote-repository>
-    <remote-repository>
       <option name="id" value="nexus-maven-snapshots" />
       <option name="name" value="nexus-maven-snapshots" />
       <option name="url" value="https://nexus-dev.nchl.local:8443/repository/dmbs-snapshots/" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="central" />
+      <option name="name" value="Central Repository" />
+      <option name="url" value="https://repo.maven.apache.org/maven2" />
     </remote-repository>
     <remote-repository>
       <option name="id" value="central" />

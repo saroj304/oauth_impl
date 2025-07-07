@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nchl.authserver.authorization_server.Utility.TokenCaptureResponseWrapper;
 import com.nchl.authserver.authorization_server.model.OAuthToken;
 import com.nchl.authserver.authorization_server.service.impl.OAuthTokenCacheService;
+import com.nimbusds.jwt.JWTParser;
+import com.nimbusds.jwt.SignedJWT;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletOutputStream;
@@ -15,6 +17,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
 
 @Component
 @Slf4j
@@ -39,35 +43,41 @@ public class OAuthTokenCachingFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Wrap response to capture the output
-        TokenCaptureResponseWrapper capturingResponse = new TokenCaptureResponseWrapper(response);
+        TokenCaptureResponseWrapper wrappedResponse = new TokenCaptureResponseWrapper(response);
 
-        filterChain.doFilter(request, capturingResponse);
+        // Proceed with the filter chain
+        filterChain.doFilter(request, wrappedResponse);
 
-        byte[] content = capturingResponse.getCapturedContent();
-        log.info("Token Capture Response: {}", objectMapper.writeValueAsString(content));
+        byte[] content = wrappedResponse.getCapturedContent();
+        ServletOutputStream out = response.getOutputStream();
+
+        // Always write response content back to client
+        out.write(content);
+        out.flush();
+
+        // If response is OK and body is present, try to parse and cache token
         if (response.getStatus() == HttpServletResponse.SC_OK && content.length > 0) {
-            String responseBody = new String(content);
+            String responseBody = new String(content, StandardCharsets.UTF_8);
+            log.info("Token Capture Response: {}", responseBody);
 
-            // Parse JSON response
-            OAuthToken token = objectMapper.readValue(responseBody, OAuthToken.class);
-             log.info("parsed token: {}", token);
-            // For demo: using "nc hl" (subject) or another identifier as key
-            // In production: use userId/clientId or "jti" from the JWT for precise keys
-            String userKey = "user:oauth:token:nchl";
+            try {
+                OAuthToken token = objectMapper.readValue(responseBody, OAuthToken.class);
+                log.info("Parsed token: {}", token);
 
-            // Cache the token
-            tokenCacheService.storeToken(userKey, token);
+                // Extract user ID and client ID from the JWT
+                SignedJWT signedJWT = (SignedJWT) JWTParser.parse(token.getIdToken());
+                String userId = signedJWT.getJWTClaimsSet().getSubject();       // e.g., "nchl"
+                String clientId = signedJWT.getJWTClaimsSet().getAudience().get(0); // e.g., "client"
 
-            // Write the original content back to the client
-            ServletOutputStream out = response.getOutputStream();
-            out.write(content);
-            out.flush();
-        } else {
-            // Write content back if not 200 or no content
-            ServletOutputStream out = response.getOutputStream();
-            out.write(content);
-            out.flush();
+                String cacheKey = "refresh:" + userId + ":" + clientId;
+                log.debug("Caching token with key: {}", cacheKey);
+
+                tokenCacheService.storeToken(cacheKey, token);
+
+            } catch (Exception e) {
+                log.error("Failed to parse or cache token", e);
+            }
         }
     }
+
 }
